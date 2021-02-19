@@ -45,7 +45,8 @@ class Net_view(nn.Module):
             nn.Conv2d(16, 1 + opt.num_source, kernel_size=3, stride=1, padding=1),
         )
 
-        self.softmax = nn.Softmax(dim=1)
+        self.softmax_d1 = nn.Softmax(dim=1)
+        self.softmax_d2 = nn.Softmax(dim=2)
 
     def forward(self, ind_source, img_source, opt):
 
@@ -75,22 +76,22 @@ class Net_view(nn.Module):
             disp_target = disp_out[:, 0, :, :].view(N, an2, h_c, w_c)  # disparity for each view
             disp_target = functional.pad(disp_target, pad=[opt.crop_size, opt.crop_size, opt.crop_size, opt.crop_size], mode='constant', value=0)
             conf_source = disp_out[:, 1:, :, :].view(N, an2, num_source, h_c, w_c)  # confidence of source views for each view
-            conf_source = self.softmax(conf_source)
+            conf_source = self.softmax_d2(conf_source)
 
             # intermediate LF
             warp_img_input = img_source.view(N * num_source, 1, h, w).repeat(an2, 1, 1, 1)  # [N*an2*4,1,h,w]
-            grid = construct_syn_grid(an, num_source, ind_source, disp_target, N, h, w) # [N*an2*4,h,w,2]
+            grid = construct_syn_grid(an, num_source, ind_source, disp_target, N, h, w)  # [N*an2*4,h,w,2]
             warped_img = functional.grid_sample(warp_img_input, grid).view(N, an2, num_source, h, w)  # {N,an2,4,h,w]
             warped_img = crop_boundary(warped_img, opt.crop_size)
 
             inter_lf = torch.sum(warped_img * conf_source, dim=2)  # [N,an2,h,w]
+
             return disp_target, inter_lf
 
         else:
             inter_lf = torch.zeros((N, an2, h_c, w_c)).type_as(img_source)
             for k_t in range(0, an2):  # for each target view
                 ind_t = torch.arange(an2)[k_t]
-
                 # disparity & confidence estimation
                 PSV = torch.zeros((N, D, num_source, h, w)).type_as(img_source)
                 for step in range(0, D):
@@ -107,7 +108,7 @@ class Net_view(nn.Module):
                 disp_target = disp_out[:, 0, :, :]  # [N,h,w] disparity for each view
                 disp_target = functional.pad(disp_target, pad=[opt.crop_size, opt.crop_size, opt.crop_size, opt.crop_size], mode='constant', value=0)
                 conf_source = disp_out[:, 1:, :, :]  # [N,4,h_c,w_c] confidence of source views for each view
-                conf_source_norm = self.softmax(conf_source)
+                conf_source_norm = self.softmax_d1(conf_source)
 
                 # warping source views
                 warped_img = torch.zeros(N, num_source, h, w).type_as(img_source)
@@ -144,7 +145,6 @@ class Net_refine(nn.Module):
 
     def forward(self, inter_lf):
         N, an2, h, w = inter_lf.shape
-
         feat = self.lf_conv0(inter_lf.view(N * an2, 1, h, w))  # [N*an2,64,h,w]
         feat = self.lf_altblock(feat)  # [N*an2,64,h,w]
         res = self.lf_res_conv(feat).view(N, an2, h, w)  # [N*an2,1,h,w]-->[N,an2,h,w]

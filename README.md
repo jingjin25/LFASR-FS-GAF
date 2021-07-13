@@ -32,4 +32,21 @@ python test_pretrained.py --model_dir pretrained_models --save_dir results --arb
 ```
 
 ## Training
-The training code will be released soon.
+To re-train the model, run:
+
+**(Ours (fixed) under task 2x2&rarr;7x7 for synthetic LF data)**
+```
+python train.py --arb_sample 0 --angular_in 2 --angular_out 7 --dataset HCI --dataset_path ./LFData/train_HCI.h5 --psv_range 4 --psv_step 50 --patch_size 112 --num_cp 100 --lr 6e-5
+```
+**(Ours (fixed) under task 2x2&rarr;7x7 for Lytro LF data)**
+```
+python train.py --arb_sample 0 --angular_in 2 --angular_out 7 --dataset SIG --dataset_path ./LFData/train_SIG.h5 --psv_range 2 --psv_step 50 --patch_size 64 --num_cp 20 --lr 1e-4
+```
+**(Ours (flexible) under task 4&rarr;7x7 for synthetic LF data)**
+```
+python train.py --arb_sample 1 --angular_in 4 --angular_out 7 --dataset HCI --dataset_path ./LFData/train_HCI.h5 --psv_range 4 --psv_step 50 --patch_size 64 --num_cp 100 --lr 1e-4
+```
+**(Ours (flexible) under task 4&rarr;7x7 for Lytro LF data)**
+```
+python train.py --arb_sample 1 --angular_in 4 --angular_out 7 --dataset SIG --dataset_path ./LFData/train_SIG.h5 --psv_range 2 --psv_step 50 --patch_size 64 --num_cp 20 --lr 1e-4
+```
